@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: estate-assistant
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false   # Render asks for the value when you create the service

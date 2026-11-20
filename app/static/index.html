@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estate Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f4ef; --panel: #ffffff; --text: #1c1b19; --muted: #6b675f; --line: #e4e0d6;
+    --accent: #8a6a2f; --accent-soft: #f1e9d8; --user: #1c1b19; --user-text: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --panel: #1d1c1a; --text: #ece9e2; --muted: #9c978c; --line: #2f2d29;
+      --accent: #d4b06a; --accent-soft: #2c2619; --user: #ece9e2; --user-text: #141413;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 Inter, system-ui, sans-serif;
+         display: flex; flex-direction: column; }
+  header { border-bottom: 1px solid var(--line); background: var(--panel); }
+  .bar { max-width: 860px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: var(--panel);
+          display: grid; place-items: center; font-weight: 600; flex: none; }
+  .bar h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .bar p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  main { flex: 1; overflow-y: auto; }
+  .chat { max-width: 860px; margin: 0 auto; padding: 24px 16px 8px; }
+  .welcome { text-align: center; padding: 28px 0 12px; }
+  .welcome h2 { font-size: 22px; margin: 0 0 6px; font-weight: 600; }
+  .welcome p { color: var(--muted); margin: 0 auto 18px; max-width: 560px; }
+  .stats { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-size: 13px; }
+  .stat b { display: block; font-size: 17px; }
+  .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+  .chip { text-align: left; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+          border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; font-size: 13.5px; }
+  .chip:hover { border-color: var(--accent); }
+  .msg { display: flex; margin: 14px 0; }
+  .msg.user { justify-content: flex-end; }
+  .bubble { max-width: 85%; padding: 10px 14px; border-radius: 14px; overflow-wrap: anywhere; }
+  .user .bubble { background: var(--user); color: var(--user-text); border-bottom-right-radius: 4px; white-space: pre-wrap; }
+  .bot .bubble { background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bot .bubble p { margin: 0 0 8px; } .bot .bubble p:last-child { margin: 0; }
+  .bot .bubble ul, .bot .bubble ol { margin: 4px 0 8px; padding-left: 20px; }
+  .bot .bubble a { color: var(--accent); }
+  .bot .bubble table { border-collapse: collapse; font-size: 13px; margin: 6px 0; display: block; overflow-x: auto; }
+  .bot .bubble th, .bot .bubble td { border: 1px solid var(--line); padding: 4px 8px; }
+  .sources { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; gap: 6px; }
+  .sources a { font-size: 12px; text-decoration: none; background: var(--accent-soft); color: var(--accent);
+               padding: 3px 9px; border-radius: 99px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .error .bubble { border-color: #c0573f; color: #c0573f; }
+  .typing span { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%;
+                 background: var(--muted); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
+  footer { border-top: 1px solid var(--line); background: var(--panel); }
+  form { max-width: 860px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 8px; }
+  textarea { flex: 1; resize: none; border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px;
+             font: inherit; background: var(--bg); color: var(--text); max-height: 140px; }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button.send { border: 0; border-radius: 12px; padding: 0 18px; background: var(--accent); color: var(--panel);
+                font: inherit; font-weight: 600; cursor: pointer; }
+  button.send:disabled { opacity: .5; cursor: default; }
+  .note { max-width: 860px; margin: 0 auto; padding: 0 16px 10px; font-size: 11.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="logo">EA</div>
+  <div><h1>Estate Assistant</h1><p>AI chatbot over public data from DarGlobal &amp; Wasalt</p></div>
+</div></header>
+
+<main id="scroll"><div class="chat" id="chat">
+  <div class="welcome" id="welcome">
+    <h2>Ask about luxury projects &amp; the Saudi property market</h2>
+    <p>Answers are grounded in data scraped from darglobal.co.uk and wasalt.sa, with links to the original pages.</p>
+    <div class="stats" id="stats"></div>
+    <div class="chips">
+      <button class="chip">Which DarGlobal projects are in Oman and when do they complete?</button>
+      <button class="chip">Show me branded residences by luxury brands like Aston Martin or Missoni</button>
+      <button class="chip">What are the investment benefits of buying in Ras Al Khaimah?</button>
+      <button class="chip">How many villas are for sale on Wasalt and what is the typical size?</button>
+      <button class="chip">Compare rental apartments on Wasalt by number of bedrooms</button>
+      <button class="chip">Who is DarGlobal and which brands do they partner with?</button>
+    </div>
+  </div>
+</div></main>
+
+<footer>
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Ask about projects, prices, locations, amenities…" required></textarea>
+    <button class="send" id="send" type="submit">Send</button>
+  </form>
+  <div class="note">Data snapshot: November 2026. AI answers can be wrong — check the source links.</div>
+</footer>
+
+<script>
+const chat = document.getElementById('chat'), scroll = document.getElementById('scroll');
+const form = document.getElementById('form'), input = document.getElementById('input'), send = document.getElementById('send');
+const history = [];
+
+fetch('/api/stats').then(r => r.json()).then(s => {
+  const items = [[s.darglobal_projects, 'DarGlobal projects'], [Object.keys(s.darglobal_countries).length, 'countries'],
+                 [s.wasalt_market_listings.toLocaleString(), 'Wasalt listings'], [s.darglobal_pages, 'company & press pages']];
+  document.getElementById('stats').innerHTML = items.map(([n, l]) => `<div class="stat"><b>${n}</b>${l}</div>`).join('');
+}).catch(() => {});
+
+function add(role, html, cls = '') {
+  document.getElementById('welcome')?.remove();
+  const row = document.createElement('div');
+  row.className = `msg ${role} ${cls}`;
+  row.innerHTML = `<div class="bubble">${html}</div>`;
+  chat.appendChild(row);
+  scroll.scrollTop = scroll.scrollHeight;
+  return row;
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const md = s => DOMPurify.sanitize(marked.parse(s), {ADD_ATTR: ['target']});
+
+async function ask(text) {
+  history.push({role: 'user', content: text});
+  add('user', esc(text));
+  const typing = add('bot', '<div class="typing"><span></span><span></span><span></span></div>');
+  send.disabled = true;
+  try {
+    const r = await fetch('/api/chat', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({messages: history.slice(-12)})});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Request failed');
+    history.push({role: 'assistant', content: data.answer});
+    let html = md(data.answer);
+    if (data.sources?.length) html += '<div class="sources">' + data.sources.map(s =>
+      `<a href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.title)}">${esc(s.title)}</a>`).join('') + '</div>';
+    if (data.model) html += `<div class="meta">model: ${esc(data.model)}</div>`;
+    typing.querySelector('.bubble').innerHTML = html;
+    typing.querySelectorAll('.bubble a').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; });
+  } catch (e) {
+    history.pop();
+    typing.classList.add('error');
+    typing.querySelector('.bubble').textContent = '⚠ ' + e.message;
+  } finally {
+    send.disabled = false;
+    scroll.scrollTop = scroll.scrollHeight;
+    input.focus();
+  }
+}
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const t = input.value.trim();
+  if (!t || send.disabled) return;
+  input.value = ''; input.style.height = '';
+  ask(t);
+});
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+input.addEventListener('input', () => { input.style.height = ''; input.style.height = input.scrollHeight + 'px'; });
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => ask(c.textContent)));
+</script>
+</body>
+</html>
