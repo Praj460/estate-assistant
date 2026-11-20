@@ -139,8 +139,15 @@ class DataStore:
         if key:
             groups = {}
             for r in rows:
-                groups[str(r.get(key))] = groups.get(str(r.get(key)), 0) + 1
-            out["by_" + key] = dict(sorted(groups.items(), key=lambda kv: -kv[1])[:15])
+                g = r.get(key)
+                if key == "bedrooms" and isinstance(g, int) and g >= 7:
+                    g = "7+"
+                groups[str(g if g is not None else "not specified")] = \
+                    groups.get(str(g if g is not None else "not specified"), 0) + 1
+            # Pre-computed counts and shares so the LLM doesn't do arithmetic.
+            out["by_" + key] = [
+                {key: k, "count": n, "share_pct": round(100 * n / len(rows), 1)}
+                for k, n in sorted(groups.items(), key=lambda kv: -kv[1])[:15]]
         out["example_urls"] = [r["url"] for r in rows[:3]]
         return out
 

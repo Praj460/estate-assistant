@@ -1,6 +1,7 @@
 """Chat agent: OpenRouter LLM + tools over the scraped data (hybrid RAG)."""
 import json
 import os
+import time
 
 import httpx
 
@@ -14,6 +15,7 @@ MODELS = [m.strip() for m in os.getenv(
     "nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3.5-super-vl:free,openrouter/free",
 ).split(",") if m.strip()]
 MAX_TOOL_ROUNDS = 4
+CACHE_TTL = 24 * 3600  # seconds
 
 SYSTEM_PROMPT = """You are "Estate Assistant", a real-estate chatbot built on data scraped in November 2026 from two public websites:
 1. DarGlobal (darglobal.co.uk) – an international luxury developer. {dg} projects across {countries}, plus company, partner-brand and press pages. DarGlobal does NOT publish prices online: say "price on request" and suggest contacting DarGlobal.
@@ -75,6 +77,7 @@ TOOLS = [
 
 class Agent:
     def __init__(self):
+        self._cache = {}
         self.store = DataStore()
         self.retriever = Retriever()
         ov = self.store.overview()
@@ -129,6 +132,20 @@ class Agent:
         return data["choices"][0]["message"], data.get("model")
 
     def chat(self, history):
+        """Answer with a cache for first-turn questions (saves free-tier quota:
+        reviewers often click the same suggested questions)."""
+        key = " ".join(history[-1]["content"].lower().split()) if len(history) == 1 else None
+        hit = self._cache.get(key) if key else None
+        if hit and time.time() - hit[0] < CACHE_TTL:
+            return {**hit[1], "cached": True}
+        result = self._chat(history)
+        if key and not result["answer"].startswith("Sorry"):
+            if len(self._cache) >= 300:
+                self._cache.pop(next(iter(self._cache)))
+            self._cache[key] = (time.time(), result)
+        return result
+
+    def _chat(self, history):
         """history: [{role: user|assistant, content: str}, ...] -> {answer, sources, model}"""
         messages = [{"role": "system", "content": self.system}] + history[-10:]
         sources, model = {}, None
