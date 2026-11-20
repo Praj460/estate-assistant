@@ -1,19 +1,9 @@
----
-title: Estate Assistant
-emoji: 🏙️
-colorFrom: yellow
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: AI real-estate chatbot over DarGlobal & Wasalt public data
----
-
 # Estate Assistant: real-estate AI chatbot (DarGlobal + Wasalt)
 
 An AI chatbot that answers questions about **DarGlobal** luxury projects and the **Wasalt** Saudi property market. It uses data scraped from their public websites, a free LLM through **OpenRouter**, and runs in **Docker**.
 
-**Live demo:** https://prajwal050-estate-assistant.hf.space
+**Live demo:** https://estate-assistant.onrender.com  
+*(Free hosting: if the app has been idle, the first load can take ~30–50 s to wake up.)*
 
 ## What it can answer
 
@@ -63,6 +53,10 @@ Structured questions ("4-bed villas in Oman") go through filters, which vector s
 **LLM:** free OpenRouter models with automatic fallback: `nvidia/nemotron-3-ultra-550b-a55b:free`, then `nvidia/nemotron-3.5-super-vl:free`, then `openrouter/free`. Configure with `OPENROUTER_MODELS`.
 
 **Embeddings:** `BAAI/bge-small-en-v1.5` via fastembed (ONNX, no PyTorch). The index is built at image build time. The image is about 460 MB.
+
+## Deployment
+
+Deployed on **Render** (free Docker web service) via [`render.yaml`](render.yaml). `OPENROUTER_API_KEY` is set as a private environment variable in Render.
 
 ## Run locally
 
