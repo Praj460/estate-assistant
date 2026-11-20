@@ -1,0 +1,12 @@
+# Pings the free Render service so it doesn't sleep (cold starts take ~50 s).
+name: keep-awake
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay runs slightly)
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 https://estate-assistant.onrender.com/health
