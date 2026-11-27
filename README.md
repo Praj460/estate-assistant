@@ -6,6 +6,7 @@ An AI chatbot that answers questions about **DarGlobal** luxury developments and
 |---|---|
 | **Live chatbot** | **https://estate-assistant.onrender.com** |
 | **Source code** | https://github.com/Praj460/estate-assistant |
+| **MCP server** | `https://estate-assistant.onrender.com/mcp` (Streamable HTTP, read-only, no auth) |
 | **LLM** | Free OpenRouter models (`nvidia/nemotron-3-ultra-550b-a55b:free` + fallbacks) |
 | **Stack** | Python · Playwright · FastAPI · fastembed (ONNX) · NumPy · Docker · Render |
 
@@ -28,6 +29,42 @@ An AI chatbot that answers questions about **DarGlobal** luxury developments and
 | What is the price of a 3-bedroom apartment in DG1? | Honesty: DarGlobal doesn't publish prices → "price on request" (no hallucination) |
 
 Every answer links back to the original source pages.
+
+---
+
+## MCP server (use the data from Claude, Cursor, or any MCP client)
+
+The same tools the chatbot uses are also exposed as a **Model Context Protocol** server, so any MCP client can query the DarGlobal and Wasalt data with its own model. It uses no OpenRouter quota.
+
+| Tool | Description |
+|---|---|
+| `dataset_overview` | What's in the dataset (projects per country, listing counts) |
+| `search_listings` | Structured filters: country, city, type, bedrooms, price, area, keyword |
+| `market_stats` | Counts, sizes and grouped shares across 60k Wasalt listings |
+| `semantic_search` | Meaning-based search over descriptions and DarGlobal pages |
+| `get_listing` | Full details of one project |
+
+All tools are read-only and annotated as such.
+
+**Remote (deployed):**
+
+```bash
+# Claude Code
+claude mcp add --transport http estate-assistant https://estate-assistant.onrender.com/mcp
+```
+
+For Claude Desktop, Cursor and others, add a remote MCP server with the URL `https://estate-assistant.onrender.com/mcp`. Cloning this repo and opening it in Claude Code picks it up automatically via [`.mcp.json`](.mcp.json).
+
+**Local (stdio), no network needed:**
+
+```json
+{ "mcpServers": { "estate-assistant": {
+    "command": "/path/to/estate-assistant/.venv/bin/python",
+    "args": ["-m", "app.mcp_server"],
+    "cwd": "/path/to/estate-assistant" } } }
+```
+
+Implementation: [`app/mcp_server.py`](app/mcp_server.py), built with the official `mcp` Python SDK (v2). It's mounted inside the same FastAPI app (stateless Streamable HTTP with JSON responses) and shares the already-loaded data and vector index. DNS-rebinding protection only allows the deployment's own hostname.
 
 ---
 
@@ -101,7 +138,8 @@ Real-estate questions are a mix of **structured** ("4-bed villas in Oman", "how 
 
 ```
 app/
-  main.py          FastAPI app: /api/chat, /api/stats, /health, static UI
+  main.py          FastAPI app: /api/chat, /api/stats, /health, static UI, /mcp
+  mcp_server.py    MCP server (same tools; Streamable HTTP + stdio)
   agent.py         OpenRouter agent: tool calling, fallbacks, cache
   data_store.py    structured search + market statistics
   retriever.py     chunking, embeddings, vector search (python -m app.retriever builds the index)
